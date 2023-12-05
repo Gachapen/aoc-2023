@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 func main() {
@@ -29,24 +30,47 @@ func Part2(inputPath string) int {
 }
 
 func findLowestMappedValue(seedRanges []IntRange, mappings [][]MappingRange) int {
-	lowest := math.MaxInt32
+	ch := make(chan int, len(seedRanges))
+	wg := sync.WaitGroup{}
 
 	for _, seedRange := range seedRanges {
-		end := seedRange.start + seedRange.length
-		for seed := seedRange.start; seed < end; seed++ {
-			currentValue := seed
+		wg.Add(1)
+		go findLowestMappedValueForRange(seedRange, mappings, ch, &wg)
+	}
 
-			for _, mapping := range mappings {
-				currentValue = mapSourceToDestination(currentValue, mapping)
-			}
+	wg.Wait()
+	close(ch)
 
-			if currentValue < lowest {
-				lowest = currentValue
-			}
+	lowest := math.MaxInt32
+	for lowestInRange := range ch {
+		if lowestInRange < lowest {
+			lowest = lowestInRange
 		}
 	}
 
 	return lowest
+}
+
+func findLowestMappedValueForRange(seedRange IntRange, mappings [][]MappingRange, ch chan int, wg *sync.WaitGroup) {
+	lowest := math.MaxInt32
+
+	end := seedRange.start + seedRange.length
+	for seed := seedRange.start; seed < end; seed++ {
+		currentValue := seed
+
+		for _, mapping := range mappings {
+			currentValue = mapSourceToDestination(currentValue, mapping)
+		}
+
+		if currentValue < lowest {
+			lowest = currentValue
+		}
+	}
+
+	println("Range", seedRange.start, "done")
+
+	ch <- lowest
+	wg.Done()
 }
 
 func mapSourceToDestination(source int, mapping []MappingRange) int {
