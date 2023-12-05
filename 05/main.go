@@ -51,13 +51,12 @@ func findLowestMappedValue(seedRanges []IntRange, mappings [][]MappingRange) int
 
 func mapSourceToDestination(source int, mapping []MappingRange) int {
 	for _, mappingRange := range mapping {
-		if source < mappingRange.source {
-			break
+		if source < mappingRange.sourceStart {
+			return source
 		}
 
-		sourceEnd := mappingRange.source + mappingRange.length
-		if source >= mappingRange.source && source < sourceEnd {
-			return mappingRange.destination + (source - mappingRange.source)
+		if source < mappingRange.sourceEnd {
+			return mappingRange.destinationStart + (source - mappingRange.sourceStart)
 		}
 	}
 
@@ -99,7 +98,7 @@ func parseFile(inputPath string, parseSeedsAsRange bool) ([]IntRange, [][]Mappin
 		} else if len(line) == 0 {
 			if currentMapping != nil {
 				slices.SortFunc(currentMapping, func(a, b MappingRange) int {
-					return cmp.Compare(a.source, b.source)
+					return cmp.Compare(a.sourceStart, b.sourceStart)
 				})
 				mappings = append(mappings, currentMapping)
 			}
@@ -109,9 +108,9 @@ func parseFile(inputPath string, parseSeedsAsRange bool) ([]IntRange, [][]Mappin
 			source, _ := strconv.Atoi(valueStrList[1])
 			length, _ := strconv.Atoi(valueStrList[2])
 			mappingRange := MappingRange{
-				source:      source,
-				destination: destination,
-				length:      length,
+				sourceStart:      source,
+				sourceEnd:        source + length,
+				destinationStart: destination,
 			}
 			currentMapping = append(currentMapping, mappingRange)
 		}
@@ -122,9 +121,9 @@ func parseFile(inputPath string, parseSeedsAsRange bool) ([]IntRange, [][]Mappin
 }
 
 type MappingRange struct {
-	source      int
-	destination int
-	length      int
+	sourceStart      int
+	sourceEnd        int
+	destinationStart int
 }
 
 type IntRange struct {
