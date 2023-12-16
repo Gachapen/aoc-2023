@@ -65,11 +65,10 @@ func findSumOfEnergizedTiles(grid *Grid, xStart int, yStart int, directionStart 
 	beams[0] = Beam{direction: directionStart, x: xStart, y: yStart}
 
 	for len(beams) != 0 {
-		// printGrid(&grid, beams)
+		// printGrid(grid, beams)
 
 		currentIndex := len(beams) - 1
-		beam := beams[currentIndex]
-		beams = beams[:currentIndex]
+		beam := &beams[currentIndex]
 
 		tile := getGridCell(grid, beam.x, beam.y)
 
@@ -77,6 +76,7 @@ func findSumOfEnergizedTiles(grid *Grid, xStart int, yStart int, directionStart 
 		hasBeenVisited := len(tile.beams) != 0
 
 		if willRepeat {
+			beams = beams[:currentIndex]
 			continue
 		}
 
@@ -90,21 +90,26 @@ func findSumOfEnergizedTiles(grid *Grid, xStart int, yStart int, directionStart 
 
 		switch tile.content {
 		case '.':
-			newBeams = []Beam{moveBeamInCurrentDirection(beam)}
+			moveBeamInCurrentDirection(beam)
 		case '/':
-			newBeams = []Beam{reflectBeamRight(beam)}
+			reflectBeamRight(beam)
 		case '\\':
-			newBeams = []Beam{reflectBeamLeft(beam)}
+			reflectBeamLeft(beam)
 		case '-':
 			newBeams = passBeamThroughHorizontalSplitter(beam)
 		case '|':
 			newBeams = passBeamThroughVerticalSplitter(beam)
 		}
 
-		for _, b := range newBeams {
-			if !isOutside(b.x, b.y, grid.width, grid.height) {
-				beams = append(beams, b)
+		if newBeams != nil {
+			beams = beams[:currentIndex]
+			for _, b := range newBeams {
+				if !isOutside(b.x, b.y, grid.width, grid.height) {
+					beams = append(beams, b)
+				}
 			}
+		} else if isOutside(beam.x, beam.y, grid.width, grid.height) {
+			beams = beams[:currentIndex]
 		}
 	}
 
@@ -155,7 +160,7 @@ func isOutside(x int, y int, width int, height int) bool {
 	return x < 0 || y < 0 || x >= width || y >= height
 }
 
-func moveBeamInCurrentDirection(beam Beam) Beam {
+func moveBeamInCurrentDirection(beam *Beam) {
 	switch beam.direction {
 	case Up:
 		beam.y--
@@ -166,11 +171,9 @@ func moveBeamInCurrentDirection(beam Beam) Beam {
 	case Left:
 		beam.x--
 	}
-
-	return beam
 }
 
-func reflectBeamRight(beam Beam) Beam {
+func reflectBeamRight(beam *Beam) {
 	switch beam.direction {
 	case Up:
 		beam.direction = Right
@@ -182,10 +185,10 @@ func reflectBeamRight(beam Beam) Beam {
 		beam.direction = Down
 	}
 
-	return moveBeamInCurrentDirection(beam)
+	moveBeamInCurrentDirection(beam)
 }
 
-func reflectBeamLeft(beam Beam) Beam {
+func reflectBeamLeft(beam *Beam) {
 	switch beam.direction {
 	case Up:
 		beam.direction = Left
@@ -197,43 +200,37 @@ func reflectBeamLeft(beam Beam) Beam {
 		beam.direction = Up
 	}
 
-	return moveBeamInCurrentDirection(beam)
+	moveBeamInCurrentDirection(beam)
 }
 
-func passBeamThroughHorizontalSplitter(beam Beam) []Beam {
-	var beams []Beam
-
+func passBeamThroughHorizontalSplitter(beam *Beam) []Beam {
 	if beam.direction == Right || beam.direction == Left {
-		beams = []Beam{beam}
+		moveBeamInCurrentDirection(beam)
+		return nil
 	} else {
-		beams = make([]Beam, 2)
+		beams := make([]Beam, 2)
 		beams[0] = Beam{x: beam.x, y: beam.y, direction: Left}
 		beams[1] = Beam{x: beam.x, y: beam.y, direction: Right}
-	}
+		moveBeamInCurrentDirection(&beams[0])
+		moveBeamInCurrentDirection(&beams[1])
 
-	for i, beam := range beams {
-		beams[i] = moveBeamInCurrentDirection(beam)
+		return beams
 	}
-
-	return beams
 }
 
-func passBeamThroughVerticalSplitter(beam Beam) []Beam {
-	var beams []Beam
-
+func passBeamThroughVerticalSplitter(beam *Beam) []Beam {
 	if beam.direction == Up || beam.direction == Down {
-		beams = []Beam{beam}
+		moveBeamInCurrentDirection(beam)
+		return nil
 	} else {
-		beams = make([]Beam, 2)
+		beams := make([]Beam, 2)
 		beams[0] = Beam{x: beam.x, y: beam.y, direction: Up}
 		beams[1] = Beam{x: beam.x, y: beam.y, direction: Down}
-	}
+		moveBeamInCurrentDirection(&beams[0])
+		moveBeamInCurrentDirection(&beams[1])
 
-	for i, beam := range beams {
-		beams[i] = moveBeamInCurrentDirection(beam)
+		return beams
 	}
-
-	return beams
 }
 
 func parseFile(inputPath string) Grid {
